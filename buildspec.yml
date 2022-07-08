@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_REPO_NAME=382560948490.dkr.ecr.ap-southeast-1.amazonaws.com/deploy-test
+  build:
+    commands:
+      - echo Building the Docker image $IMAGE_REPO_NAME...
+      - docker build -t $IMAGE_REPO_NAME .
+      - echo Build completed. Tagging image $IMAGE_REPO_NAME with tags `latest` and `$CODEBUILD_RESOLVED_SOURCE_VERSION`...
+      - docker tag $IMAGE_REPO_NAME $IMAGE_REPO_NAME:latest
+      - docker tag $IMAGE_REPO_NAME $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+  post_build:
+    commands:
+      - echo Pushing the Docker images to ECR...
+      - docker push $IMAGE_REPO_NAME:latest
+      - echo Docker image $IMAGE_REPO_NAME:latest was succesfully pushed.
+      - docker push $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo Docker image $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION was succesfully pushed.
+      - printf '[{"name":"prepaid-metering","imageUri":"%s"}]' 382560948490.dkr.ecr.ap-southeast-1.amazonaws.com/deploy-test:latest > imagedefinitions.json
+artifacts:
+  files: imagedefinitions.json
